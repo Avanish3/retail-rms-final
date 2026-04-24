@@ -1,0 +1,15 @@
+2026-04-07 15:24:25.979 IST [13876] LOG:  starting PostgreSQL 18.3 on x86_64-windows, compiled by msvc-19.44.35223, 64-bit
+2026-04-07 15:24:25.985 IST [13876] LOG:  listening on IPv6 address "::1", port 15432
+2026-04-07 15:24:25.987 IST [13876] LOG:  listening on IPv4 address "127.0.0.1", port 15432
+2026-04-07 15:24:26.066 IST [15564] LOG:  database system was interrupted; last known up at 2026-04-07 15:23:28 IST
+2026-04-07 15:24:26.300 IST [10432] FATAL:  the database system is starting up
+2026-04-07 15:24:28.113 IST [15564] LOG:  database system was not properly shut down; automatic recovery in progress
+2026-04-07 15:24:28.117 IST [15564] LOG:  invalid record length at 0/17F1650: expected at least 24, got 0
+2026-04-07 15:24:28.117 IST [15564] LOG:  redo is not required
+2026-04-07 15:24:28.125 IST [13348] LOG:  checkpoint starting: end-of-recovery immediate wait
+2026-04-07 15:24:28.144 IST [13348] LOG:  checkpoint complete: wrote 0 buffers (0.0%), wrote 3 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.003 s, sync=0.004 s, total=0.025 s; sync files=2, longest=0.002 s, average=0.002 s; distance=0 kB, estimate=0 kB; lsn=0/17F1650, redo lsn=0/17F1650
+2026-04-07 15:24:28.159 IST [13876] LOG:  database system is ready to accept connections
+2026-04-07 15:24:47.332 IST [13876] LOG:  background worker "logical replication launcher" (PID 13748) was terminated by exception 0xC000013A
+2026-04-07 15:24:47.332 IST [13876] HINT:  See C include file "ntstatus.h" for a description of the hexadecimal value.
+2026-04-07 15:24:47.332 IST [13876] LOG:  terminating any other active server processes
+2026-04-07 15:24:47.342 IST [13876] LOG:  received fast shutdown request

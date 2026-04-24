@@ -1,0 +1,10 @@
+
+> enterprise-retail-rms-backend@1.0.0 start:dev
+> ts-node src/server.ts
+
+Enterprise Retail RMS Backend running successfully.
+Database: postgres://postgres@127.0.0.1:5432/retail_rms (schema: public, synchronize: true)
+Open frontend: http://127.0.0.1:4000/app/
+Open in browser: http://127.0.0.1:4000
+Swagger Docs: http://127.0.0.1:4000/api-docs
+Health Check: http://127.0.0.1:4000/health
