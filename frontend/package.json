@@ -1,0 +1,10 @@
+{
+  "name": "retail-rms-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Standalone frontend server for the Retail RMS dashboard",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  }
+}
