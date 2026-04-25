@@ -42,7 +42,7 @@ __decorate([
 ], Product.prototype, "category", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: "varchar", nullable: true }),
-    __metadata("design:type", Object)
+    __metadata("design:type", String)
 ], Product.prototype, "barcode", void 0);
 __decorate([
     (0, typeorm_1.Column)({ default: 10 }),
@@ -50,7 +50,7 @@ __decorate([
 ], Product.prototype, "reorderLevel", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: "text", nullable: true }),
-    __metadata("design:type", Object)
+    __metadata("design:type", String)
 ], Product.prototype, "description", void 0);
 __decorate([
     (0, typeorm_1.Column)({ default: true }),

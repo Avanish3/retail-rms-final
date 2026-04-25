@@ -29,11 +29,11 @@ __decorate([
 ], Customer.prototype, "phone", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: "varchar", unique: true, nullable: true }),
-    __metadata("design:type", Object)
+    __metadata("design:type", String)
 ], Customer.prototype, "email", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: "text", nullable: true }),
-    __metadata("design:type", Object)
+    __metadata("design:type", String)
 ], Customer.prototype, "address", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: "decimal", precision: 12, scale: 2, default: 0 }),

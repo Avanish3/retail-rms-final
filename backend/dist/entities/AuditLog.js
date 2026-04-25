@@ -37,7 +37,7 @@ __decorate([
 ], AuditLog.prototype, "metadata", void 0);
 __decorate([
     (0, typeorm_1.ManyToOne)(() => User_1.User, (user) => user.auditLogs, { onDelete: "SET NULL", nullable: true }),
-    __metadata("design:type", Object)
+    __metadata("design:type", User_1.User)
 ], AuditLog.prototype, "user", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)(),

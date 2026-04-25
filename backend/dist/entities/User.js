@@ -45,7 +45,7 @@ __decorate([
 ], User.prototype, "role", void 0);
 __decorate([
     (0, typeorm_1.ManyToOne)(() => Store_1.Store, (store) => store.users, { nullable: true, onDelete: "SET NULL" }),
-    __metadata("design:type", Object)
+    __metadata("design:type", Store_1.Store)
 ], User.prototype, "store", void 0);
 __decorate([
     (0, typeorm_1.OneToMany)(() => Order_1.Order, (order) => order.createdBy),

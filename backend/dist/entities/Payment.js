@@ -40,7 +40,7 @@ __decorate([
 ], Payment.prototype, "amount", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: "varchar", nullable: true }),
-    __metadata("design:type", Object)
+    __metadata("design:type", String)
 ], Payment.prototype, "reference", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)(),

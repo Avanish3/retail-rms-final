@@ -49,19 +49,19 @@ __decorate([
 ], Order.prototype, "status", void 0);
 __decorate([
     (0, typeorm_1.ManyToOne)(() => Store_1.Store, (store) => store.orders, { onDelete: "SET NULL", nullable: true }),
-    __metadata("design:type", Object)
+    __metadata("design:type", Store_1.Store)
 ], Order.prototype, "store", void 0);
 __decorate([
     (0, typeorm_1.ManyToOne)(() => Customer_1.Customer, (customer) => customer.orders, { onDelete: "SET NULL", nullable: true }),
-    __metadata("design:type", Object)
+    __metadata("design:type", Customer_1.Customer)
 ], Order.prototype, "customer", void 0);
 __decorate([
     (0, typeorm_1.ManyToOne)(() => User_1.User, (user) => user.createdOrders, { onDelete: "SET NULL", nullable: true }),
-    __metadata("design:type", Object)
+    __metadata("design:type", User_1.User)
 ], Order.prototype, "createdBy", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: "varchar", nullable: true }),
-    __metadata("design:type", Object)
+    __metadata("design:type", String)
 ], Order.prototype, "supplierName", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: "decimal", precision: 12, scale: 2, default: 0 }),
@@ -81,7 +81,7 @@ __decorate([
 ], Order.prototype, "discountAmount", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: "text", nullable: true }),
-    __metadata("design:type", Object)
+    __metadata("design:type", String)
 ], Order.prototype, "notes", void 0);
 __decorate([
     (0, typeorm_1.OneToMany)(() => OrderItem_1.OrderItem, (item) => item.order, { cascade: true }),

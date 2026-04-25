@@ -35,7 +35,7 @@ __decorate([
 ], Inventory.prototype, "stock", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: "varchar", nullable: true }),
-    __metadata("design:type", Object)
+    __metadata("design:type", String)
 ], Inventory.prototype, "warehouseLocation", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: "int", default: 0 }),
@@ -43,7 +43,7 @@ __decorate([
 ], Inventory.prototype, "reservedStock", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: env_1.env.dbType === "sqljs" ? "datetime" : "timestamp", nullable: true }),
-    __metadata("design:type", Object)
+    __metadata("design:type", Date)
 ], Inventory.prototype, "lastRestockedAt", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)(),

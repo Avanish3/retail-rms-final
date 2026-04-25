@@ -7,11 +7,10 @@
     "esModuleInterop": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "strict": false, 
+    "strict": false,
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "moduleResolution": "node",
-    "ignoreDeprecations": "6.0",
     "types": ["node"]
   },
   "include": ["src/**/*.ts"]
