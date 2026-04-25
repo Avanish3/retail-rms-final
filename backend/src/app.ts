@@ -21,6 +21,7 @@ import { notFoundHandler } from "./middleware/not-found.middleware";
 export function createApp() {
   const app = express();
   const frontendPath = path.resolve(__dirname, "../../frontend");
+  const frontendIndexPath = path.join(frontendPath, "index.html");
 
   app.use(helmet());
   app.use(cors());
@@ -84,6 +85,14 @@ export function createApp() {
   app.use("/app", express.static(frontendPath));
   app.get("/app", (_req, res) => {
     res.redirect(301, "/app/");
+  });
+  app.get("/app/*", (req, res, next) => {
+    if (path.extname(req.path)) {
+      next();
+      return;
+    }
+
+    res.sendFile(frontendIndexPath);
   });
 
   configureSwagger(app);

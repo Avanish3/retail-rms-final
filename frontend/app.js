@@ -1,4 +1,5 @@
-const appRoot = document.querySelector("#app");
+const loginPageRoot = document.querySelector("#loginPage");
+const dashboardPageRoot = document.querySelector("#dashboardPage");
 
 const STORAGE_KEYS = {
   apiBase: "retail_rms_api_base",
@@ -25,11 +26,14 @@ const DEMO_USERS = [
 ];
 
 const defaultApiBase = "http://127.0.0.1:4000/api";
+const shouldRestoreInitialSession = shouldRestoreSessionFromLocation();
+const storedSession = readStorage(STORAGE_KEYS.session, null);
+const initialSession = shouldRestoreInitialSession ? normalizeSession(storedSession) : null;
 
 const state = {
   route: "dashboard",
   apiBase: localStorage.getItem(STORAGE_KEYS.apiBase) ?? defaultApiBase,
-  session: readStorage(STORAGE_KEYS.session, null),
+  session: initialSession,
   loading: false,
   loadingLabel: "Syncing data",
   feedback: null,
@@ -59,6 +63,10 @@ const state = {
     supplyDraft: createSupplyDraft()
   }
 };
+
+if (shouldRestoreInitialSession && !initialSession && localStorage.getItem(STORAGE_KEYS.session)) {
+  localStorage.removeItem(STORAGE_KEYS.session);
+}
 
 function createEmptyData() {
   return {
@@ -141,6 +149,26 @@ function writeStorage(key, value) {
   localStorage.setItem(key, JSON.stringify(value));
 }
 
+function normalizeSession(session) {
+  if (!session || typeof session !== "object" || Array.isArray(session)) {
+    return null;
+  }
+
+  const token = typeof session.token === "string" ? session.token.trim() : "";
+  if (!token) {
+    return null;
+  }
+
+  return {
+    ...session,
+    token
+  };
+}
+
+function isAuthenticated() {
+  return Boolean(state.session?.token);
+}
+
 function getBackendBase() {
   return state.apiBase.replace(/\/api\/?$/, "");
 }
@@ -148,6 +176,87 @@ function getBackendBase() {
 function hasRole(...roles) {
   const role = state.session?.user?.role;
   return Boolean(role && roles.includes(role));
+}
+
+function isKnownRoute(routeId) {
+  return ROUTES.some((route) => route.id === routeId);
+}
+
+function normalizeRouteId(routeId) {
+  return isKnownRoute(routeId) ? routeId : "dashboard";
+}
+
+function routeFromPathname(pathname) {
+  const segments = String(pathname ?? "")
+    .split("/")
+    .filter(Boolean);
+
+  if (!segments.length) {
+    return "dashboard";
+  }
+
+  if (segments[0] === "app") {
+    return normalizeRouteId(segments[1] ?? "dashboard");
+  }
+
+  return normalizeRouteId(segments[0] ?? "dashboard");
+}
+
+function routeFromHash(hash) {
+  const normalizedHash = String(hash ?? "").replace(/^#\/?/, "").trim();
+  if (!normalizedHash) {
+    return null;
+  }
+
+  return normalizeRouteId(normalizedHash.split("/")[0]);
+}
+
+function hasExplicitRouteInPathname(pathname) {
+  const segments = String(pathname ?? "")
+    .split("/")
+    .filter(Boolean);
+
+  if (!segments.length) {
+    return false;
+  }
+
+  if (segments[0] === "app") {
+    return Boolean(segments[1] && isKnownRoute(segments[1]));
+  }
+
+  return isKnownRoute(segments[0]);
+}
+
+function shouldRestoreSessionFromLocation() {
+  return Boolean(routeFromHash(window.location.hash) || hasExplicitRouteInPathname(window.location.pathname));
+}
+
+function syncRouteFromLocation() {
+  const hashRoute = routeFromHash(window.location.hash);
+  state.route = hashRoute ?? routeFromPathname(window.location.pathname);
+}
+
+function routeBasePath() {
+  const segments = window.location.pathname.split("/").filter(Boolean);
+  return segments[0] === "app" ? "/app" : "";
+}
+
+function syncLocationWithRoute() {
+  if (typeof window.history?.replaceState !== "function") {
+    return;
+  }
+
+  const targetPath = isAuthenticated()
+    ? `${routeBasePath()}/${normalizeRouteId(state.route)}`.replace(/\/{2,}/g, "/")
+    : "/";
+  const targetUrl = `${targetPath}${window.location.search}`;
+  const currentUrl = `${window.location.pathname}${window.location.search}`;
+
+  if (currentUrl === targetUrl && !window.location.hash) {
+    return;
+  }
+
+  window.history.replaceState(null, "", targetUrl);
 }
 
 function currentRole() {
@@ -466,9 +575,16 @@ async function login(email, password, apiBase) {
       body: { email, password }
     });
 
-    state.session = data;
-    writeStorage(STORAGE_KEYS.session, data);
+    const nextSession = normalizeSession(data);
+    if (!nextSession) {
+      throw new Error("Login succeeded but no authentication token was returned.");
+    }
+
+    state.session = nextSession;
+    state.route = "dashboard";
+    writeStorage(STORAGE_KEYS.session, nextSession);
     state.ui.authMode = "login";
+    state.ui.mobileSidebarOpen = false;
     clearFeedback();
     ensureDraftDefaults();
     render();
@@ -3168,7 +3284,18 @@ function renderLogin() {
 
 function render() {
   syncTheme();
-  appRoot.innerHTML = state.session ? renderApp() : renderLogin();
+  syncLocationWithRoute();
+  const authenticated = isAuthenticated();
+
+  if (loginPageRoot) {
+    loginPageRoot.hidden = authenticated;
+    loginPageRoot.innerHTML = authenticated ? "" : renderLogin();
+  }
+
+  if (dashboardPageRoot) {
+    dashboardPageRoot.hidden = !authenticated;
+    dashboardPageRoot.innerHTML = authenticated ? renderApp() : "";
+  }
 }
 
 function formValue(formData, key) {
@@ -3397,7 +3524,11 @@ async function handleClick(event) {
   }
 
   if (button.dataset.route) {
-    state.route = button.dataset.route;
+    if (!isAuthenticated()) {
+      render();
+      return;
+    }
+    state.route = normalizeRouteId(button.dataset.route);
     state.ui.mobileSidebarOpen = false;
     render();
     return;
@@ -3586,19 +3717,29 @@ function handleChange(event) {
   handleDraftChange(target);
 }
 
-appRoot.addEventListener("submit", (event) => {
-  void handleSubmit(event);
-});
+function bindRootEvents(root) {
+  if (!root) {
+    return;
+  }
 
-appRoot.addEventListener("click", (event) => {
-  void handleClick(event);
-});
+  root.addEventListener("submit", (event) => {
+    void handleSubmit(event);
+  });
 
-appRoot.addEventListener("change", handleChange);
+  root.addEventListener("click", (event) => {
+    void handleClick(event);
+  });
+
+  root.addEventListener("change", handleChange);
+}
+
+bindRootEvents(loginPageRoot);
+bindRootEvents(dashboardPageRoot);
 
 syncTheme();
+syncRouteFromLocation();
 render();
 
-if (state.session?.token) {
+if (isAuthenticated()) {
   void hydrateAppData();
 }
