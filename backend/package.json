@@ -5,7 +5,7 @@
   "description": "Enterprise Retail Management System backend with AI-powered retail insights",
   "main": "dist/server.js",
   "engines": {
-    "node": ">=18"
+    "node": "24.14.1"
   },
   "type": "commonjs",
   "keywords": ["retail", "rms", "backend", "nodejs", "express", "typeorm"],
