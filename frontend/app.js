@@ -25,7 +25,7 @@ const DEMO_USERS = [
   { label: "Cashier", email: "cashier@retailrms.com", password: "Password@123" }
 ];
 
-const defaultApiBase = "http://127.0.0.1:4000/api";
+const defaultApiBase = "https://retail-rms-final-2.onrender.com/api";
 const shouldRestoreInitialSession = shouldRestoreSessionFromLocation();
 const storedSession = readStorage(STORAGE_KEYS.session, null);
 const initialSession = shouldRestoreInitialSession ? normalizeSession(storedSession) : null;
