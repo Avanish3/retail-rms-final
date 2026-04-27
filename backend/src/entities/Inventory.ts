@@ -7,7 +7,6 @@ import {
   Unique,
   UpdateDateColumn
 } from "typeorm";
-import { env } from "../config/env";
 import { Product } from "./Product";
 import { Store } from "./Store";
 
@@ -32,7 +31,7 @@ export class Inventory {
   @Column({ type: "int", default: 0 })
   reservedStock!: number;
 
-  @Column({ type: env.dbType === "sqljs" ? "datetime" : "timestamp", nullable: true })
+  @Column({ nullable: true })
   lastRestockedAt!: Date | null;
 
   @CreateDateColumn()

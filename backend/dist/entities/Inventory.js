@@ -11,7 +11,6 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Inventory = void 0;
 const typeorm_1 = require("typeorm");
-const env_1 = require("../config/env");
 const Product_1 = require("./Product");
 const Store_1 = require("./Store");
 let Inventory = class Inventory {
@@ -42,7 +41,7 @@ __decorate([
     __metadata("design:type", Number)
 ], Inventory.prototype, "reservedStock", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: env_1.env.dbType === "sqljs" ? "datetime" : "timestamp", nullable: true }),
+    (0, typeorm_1.Column)({ nullable: true }),
     __metadata("design:type", Date)
 ], Inventory.prototype, "lastRestockedAt", void 0);
 __decorate([

@@ -9,3 +9,7 @@ services:
     envVars:
       - key: NODE_VERSION
         value: 24.14.1
+      - key: DB_TYPE
+        value: sqljs
+      - key: DB_SYNCHRONIZE
+        value: "true"

@@ -1,0 +1,6 @@
+Enterprise Retail RMS Backend running successfully.
+Database: sqljs file at data/retail-rms.sqlite
+Open frontend: http://127.0.0.1:43123/app/
+Open in browser: http://127.0.0.1:43123
+Swagger Docs: http://127.0.0.1:43123/api-docs
+Health Check: http://127.0.0.1:43123/health

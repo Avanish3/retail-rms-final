@@ -33,32 +33,40 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
+const express = __importStar(require("express"));
+const path_1 = require("path");
 const app_1 = require("./app");
 const cache_1 = require("./config/cache");
 const data_source_1 = require("./config/data-source");
 const env_1 = require("./config/env");
-// ✅ ADDED (serve frontend)
-const express = __importStar(require("express"));
-const path_1 = require("path");
+const seed_1 = require("./database/seed");
+async function initializeDatabase() {
+    try {
+        await data_source_1.AppDataSource.initialize();
+        return;
+    }
+    catch (error) {
+        if ((0, data_source_1.getActiveDbType)() !== "postgres" || !env_1.env.dbFallbackToSqljs) {
+            throw error;
+        }
+        console.warn("Primary Postgres connection failed. Falling back to sqljs for startup.", error);
+        (0, data_source_1.replaceDataSource)("sqljs");
+        await data_source_1.AppDataSource.initialize();
+    }
+}
 async function bootstrap() {
-    await data_source_1.AppDataSource.initialize();
+    await initializeDatabase();
+    await (0, seed_1.seedDatabase)(data_source_1.AppDataSource);
     await (0, cache_1.initCache)();
     const app = (0, app_1.createApp)();
-    // ✅ ADDED (serve frontend from /app)
     app.use("/app", express.static((0, path_1.join)(__dirname, "..", "public", "app")));
-    // ✅ ADDED (optional redirect to index.html)
-    app.get("/app", (req, res) => {
+    app.get("/app", (_req, res) => {
         res.redirect("/app/index.html");
     });
     const server = app.listen(env_1.env.port, () => {
         const baseUrl = `http://127.0.0.1:${env_1.env.port}`;
         console.log(`${env_1.env.appName} running successfully.`);
-        if (env_1.env.dbType === "postgres") {
-            console.log(`Database: postgres://${env_1.env.dbUser}@${env_1.env.dbHost}:${env_1.env.dbPort}/${env_1.env.dbName} (schema: public, synchronize: ${String(env_1.env.dbSynchronize)})`);
-        }
-        else {
-            console.log(`Database: sqljs file at ${env_1.env.sqlJsLocation}`);
-        }
+        console.log(`Database: ${(0, data_source_1.describeDatabaseConnection)()}`);
         console.log(`Open frontend: ${baseUrl}/app/`);
         console.log(`Open in browser: ${baseUrl}`);
         console.log(`Swagger Docs: ${baseUrl}/api-docs`);

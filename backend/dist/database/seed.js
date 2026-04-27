@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.seedDatabase = seedDatabase;
 const data_source_1 = require("../config/data-source");
 const Customer_1 = require("../entities/Customer");
 const Inventory_1 = require("../entities/Inventory");
@@ -7,13 +8,12 @@ const Product_1 = require("../entities/Product");
 const Store_1 = require("../entities/Store");
 const User_1 = require("../entities/User");
 const password_1 = require("../utils/password");
-async function seed() {
-    await data_source_1.AppDataSource.initialize();
-    const storeRepository = data_source_1.AppDataSource.getRepository(Store_1.Store);
-    const userRepository = data_source_1.AppDataSource.getRepository(User_1.User);
-    const productRepository = data_source_1.AppDataSource.getRepository(Product_1.Product);
-    const inventoryRepository = data_source_1.AppDataSource.getRepository(Inventory_1.Inventory);
-    const customerRepository = data_source_1.AppDataSource.getRepository(Customer_1.Customer);
+async function seedDatabase(dataSource) {
+    const storeRepository = dataSource.getRepository(Store_1.Store);
+    const userRepository = dataSource.getRepository(User_1.User);
+    const productRepository = dataSource.getRepository(Product_1.Product);
+    const inventoryRepository = dataSource.getRepository(Inventory_1.Inventory);
+    const customerRepository = dataSource.getRepository(Customer_1.Customer);
     let store = await storeRepository.findOne({ where: { code: "BLR-001" } });
     if (!store) {
         store = await storeRepository.save(storeRepository.create({
@@ -112,13 +112,23 @@ async function seed() {
             address: "MG Road, Bangalore"
         }));
     }
-    console.log("Seed completed.");
-    await data_source_1.AppDataSource.destroy();
 }
-seed().catch(async (error) => {
-    console.error("Seed failed", error);
-    if (data_source_1.AppDataSource.isInitialized) {
+async function seed() {
+    await data_source_1.AppDataSource.initialize();
+    try {
+        await seedDatabase(data_source_1.AppDataSource);
+        console.log("Seed completed.");
+    }
+    finally {
         await data_source_1.AppDataSource.destroy();
     }
-    process.exit(1);
-});
+}
+if (require.main === module) {
+    seed().catch(async (error) => {
+        console.error("Seed failed", error);
+        if (data_source_1.AppDataSource.isInitialized) {
+            await data_source_1.AppDataSource.destroy();
+        }
+        process.exit(1);
+    });
+}

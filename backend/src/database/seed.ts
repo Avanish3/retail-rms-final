@@ -1,3 +1,4 @@
+import type { DataSource } from "typeorm";
 import { AppDataSource } from "../config/data-source";
 import { Customer } from "../entities/Customer";
 import { Inventory } from "../entities/Inventory";
@@ -6,14 +7,12 @@ import { Store } from "../entities/Store";
 import { User, UserRole } from "../entities/User";
 import { hashPassword } from "../utils/password";
 
-async function seed() {
-  await AppDataSource.initialize();
-
-  const storeRepository = AppDataSource.getRepository(Store);
-  const userRepository = AppDataSource.getRepository(User);
-  const productRepository = AppDataSource.getRepository(Product);
-  const inventoryRepository = AppDataSource.getRepository(Inventory);
-  const customerRepository = AppDataSource.getRepository(Customer);
+export async function seedDatabase(dataSource: DataSource) {
+  const storeRepository = dataSource.getRepository(Store);
+  const userRepository = dataSource.getRepository(User);
+  const productRepository = dataSource.getRepository(Product);
+  const inventoryRepository = dataSource.getRepository(Inventory);
+  const customerRepository = dataSource.getRepository(Customer);
 
   let store = await storeRepository.findOne({ where: { code: "BLR-001" } });
   if (!store) {
@@ -130,15 +129,25 @@ async function seed() {
       })
     );
   }
-
-  console.log("Seed completed.");
-  await AppDataSource.destroy();
 }
 
-seed().catch(async (error) => {
-  console.error("Seed failed", error);
-  if (AppDataSource.isInitialized) {
+async function seed() {
+  await AppDataSource.initialize();
+
+  try {
+    await seedDatabase(AppDataSource);
+    console.log("Seed completed.");
+  } finally {
     await AppDataSource.destroy();
   }
-  process.exit(1);
-});
+}
+
+if (require.main === module) {
+  seed().catch(async (error) => {
+    console.error("Seed failed", error);
+    if (AppDataSource.isInitialized) {
+      await AppDataSource.destroy();
+    }
+    process.exit(1);
+  });
+}
