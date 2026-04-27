@@ -29,6 +29,7 @@ const DEMO_USERS = [
 ];
 
 const API_BASE_URL = "https://retail-rms-final-4.onrender.com/api";
+const RETRYABLE_STATUS_CODES = new Set([408, 425, 429, 500, 502, 503, 504]);
 const defaultApiBase = resolveApiBase();
 const shouldRestoreInitialSession = shouldRestoreSessionFromLocation();
 const storedSession = readStorage(STORAGE_KEYS.session, null);
@@ -88,16 +89,7 @@ try {
   // Ignore storage failures and keep using the fixed API base.
 }
 
-function isLocalHostname(hostname) {
-  return hostname === "127.0.0.1" || hostname === "localhost";
-}
-
 function resolveApiBase() {
-  const { hostname, port } = window.location;
-  if (isLocalHostname(hostname) && port && port !== "4000") {
-    return "http://127.0.0.1:4000/api";
-  }
-
   return API_BASE_URL;
 }
 
@@ -451,10 +443,6 @@ function numberOrDefault(value, fallback = 0) {
 
 function summarizeError(error, fallback) {
   if (error instanceof TypeError && /fetch/i.test(error.message)) {
-    if (state.apiBase.startsWith("http://127.0.0.1") || state.apiBase.startsWith("http://localhost")) {
-      return "Backend is unreachable. Start the API on http://127.0.0.1:4000 and try again.";
-    }
-
     return "Backend is temporarily unreachable. Please try again in a moment.";
   }
   if (error instanceof Error && error.message) {
@@ -475,6 +463,36 @@ function safeJsonParse(value) {
   }
 }
 
+function delay(ms) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
+function isRetryableStatus(status) {
+  return RETRYABLE_STATUS_CODES.has(status);
+}
+
+async function fetchWithRetry(url, options = {}, retryCount = 2) {
+  let attempt = 0;
+
+  while (true) {
+    try {
+      const response = await fetch(url, options);
+      if (response.ok || !isRetryableStatus(response.status) || attempt >= retryCount) {
+        return response;
+      }
+    } catch (error) {
+      if (!(error instanceof TypeError) || attempt >= retryCount) {
+        throw error;
+      }
+    }
+
+    attempt += 1;
+    await delay(1200 * attempt);
+  }
+}
+
 async function api(path, options = {}) {
   const { method = "GET", body, auth = true } = options;
   const headers = { Accept: "application/json" };
@@ -485,7 +503,7 @@ async function api(path, options = {}) {
     headers.Authorization = `Bearer ${state.session.token}`;
   }
 
-  const response = await fetch(`${state.apiBase}${path}`, {
+  const response = await fetchWithRetry(`${state.apiBase}${path}`, {
     method,
     headers,
     body: body === undefined ? undefined : JSON.stringify(body)
@@ -511,7 +529,7 @@ async function api(path, options = {}) {
 
 async function fetchHealth() {
   try {
-    const response = await fetch(`${getBackendBase()}/health`);
+    const response = await fetchWithRetry(`${getBackendBase()}/health`, {}, 1);
     const payload = safeJsonParse(await response.text());
     if (!response.ok) {
       throw new Error(payload?.message ?? "Unable to reach backend health endpoint");
