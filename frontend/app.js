@@ -76,6 +76,10 @@ const state = {
     supplyDraft: createSupplyDraft()
   }
 };
+// 🔥 UPDATED FUNCTION (FINAL)
+function resolveApiBase() {
+  return "https://retail-rms-final-4.onrender.com/api";
+}
 
 if (shouldRestoreInitialSession && !initialSession && localStorage.getItem(STORAGE_KEYS.session)) {
   localStorage.removeItem(STORAGE_KEYS.session);
