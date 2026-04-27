@@ -1,5 +1,10 @@
 {
   "routes": [
-    { "src": "/", "dest": "/index.html" }
+    { "handle": "filesystem" },
+    { "src": "^/api/(.*)$", "dest": "https://retail-rms-final-2.onrender.com/api/$1" },
+    { "src": "^/health$", "dest": "https://retail-rms-final-2.onrender.com/health" },
+    { "src": "^/api-docs$", "dest": "https://retail-rms-final-2.onrender.com/api-docs" },
+    { "src": "^/api-docs/(.*)$", "dest": "https://retail-rms-final-2.onrender.com/api-docs/$1" },
+    { "src": "^/(.*)$", "dest": "/index.html" }
   ]
 }

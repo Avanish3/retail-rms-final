@@ -26,7 +26,8 @@ router.post("/register", (0, validation_1.validateBody)(registerSchema), async (
     try {
         const userRepository = data_source_1.AppDataSource.getRepository(User_1.User);
         const storeRepository = data_source_1.AppDataSource.getRepository(Store_1.Store);
-        const existing = await userRepository.findOne({ where: { email: req.body.email } });
+        const email = req.body.email.trim().toLowerCase();
+        const existing = await userRepository.findOne({ where: { email } });
         const requestedRole = req.body.role ?? User_1.UserRole.CASHIER;
         if (existing) {
             throw new errors_1.AppError(409, "User already exists");
@@ -42,7 +43,7 @@ router.post("/register", (0, validation_1.validateBody)(registerSchema), async (
         }
         const user = userRepository.create({
             fullName: req.body.fullName,
-            email: req.body.email,
+            email,
             passwordHash: await (0, password_1.hashPassword)(req.body.password),
             role: requestedRole,
             store
@@ -71,8 +72,9 @@ router.post("/register", (0, validation_1.validateBody)(registerSchema), async (
 router.post("/login", (0, validation_1.validateBody)(loginSchema), async (req, res, next) => {
     try {
         const repository = data_source_1.AppDataSource.getRepository(User_1.User);
+        const email = req.body.email.trim().toLowerCase();
         const user = await repository.findOne({
-            where: { email: req.body.email },
+            where: { email },
             relations: { store: true }
         });
         if (!user || !(await (0, password_1.comparePassword)(req.body.password, user.passwordHash))) {

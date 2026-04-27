@@ -28,7 +28,8 @@ router.post("/register", validateBody(registerSchema), async (req, res, next) =>
   try {
     const userRepository = AppDataSource.getRepository(User);
     const storeRepository = AppDataSource.getRepository(Store);
-    const existing = await userRepository.findOne({ where: { email: req.body.email } });
+    const email = req.body.email.trim().toLowerCase();
+    const existing = await userRepository.findOne({ where: { email } });
     const requestedRole = req.body.role ?? UserRole.CASHIER;
 
     if (existing) {
@@ -49,7 +50,7 @@ router.post("/register", validateBody(registerSchema), async (req, res, next) =>
 
     const user = userRepository.create({
       fullName: req.body.fullName,
-      email: req.body.email,
+      email,
       passwordHash: await hashPassword(req.body.password),
       role: requestedRole,
       store
@@ -80,8 +81,9 @@ router.post("/register", validateBody(registerSchema), async (req, res, next) =>
 router.post("/login", validateBody(loginSchema), async (req, res, next) => {
   try {
     const repository = AppDataSource.getRepository(User);
+    const email = req.body.email.trim().toLowerCase();
     const user = await repository.findOne({
-      where: { email: req.body.email },
+      where: { email },
       relations: { store: true }
     });
 

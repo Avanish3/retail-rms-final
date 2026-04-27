@@ -45,7 +45,8 @@ router.post("/", auth_middleware_1.requireAuth, (0, auth_middleware_1.allowRoles
     try {
         const userRepository = data_source_1.AppDataSource.getRepository(User_1.User);
         const storeRepository = data_source_1.AppDataSource.getRepository(Store_1.Store);
-        const existing = await userRepository.findOne({ where: { email: req.body.email } });
+        const email = req.body.email.trim().toLowerCase();
+        const existing = await userRepository.findOne({ where: { email } });
         if (existing) {
             throw new errors_1.AppError(409, "User already exists");
         }
@@ -57,7 +58,7 @@ router.post("/", auth_middleware_1.requireAuth, (0, auth_middleware_1.allowRoles
         }
         const user = userRepository.create({
             fullName: req.body.fullName,
-            email: req.body.email,
+            email,
             passwordHash: await (0, password_1.hashPassword)(req.body.password),
             role: req.body.role,
             store

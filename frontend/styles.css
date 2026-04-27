@@ -378,6 +378,19 @@ a {
   gap: 8px;
 }
 
+.password-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.password-toggle {
+  min-height: 48px;
+  padding-inline: 16px;
+  white-space: nowrap;
+}
+
 .field label {
   font-size: 0.84rem;
   font-weight: 700;

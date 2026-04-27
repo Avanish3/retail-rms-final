@@ -1,8 +1,11 @@
 const loginPageRoot = document.querySelector("#loginPage");
 const dashboardPageRoot = document.querySelector("#dashboardPage");
 
+const LEGACY_STORAGE_KEYS = {
+  apiBase: "retail_rms_api_base"
+};
+
 const STORAGE_KEYS = {
-  apiBase: "retail_rms_api_base",
   session: "retail_rms_session",
   theme: "retail_rms_theme"
 };
@@ -25,14 +28,14 @@ const DEMO_USERS = [
   { label: "Cashier", email: "cashier@retailrms.com", password: "Password@123" }
 ];
 
-const defaultApiBase = "https://retail-rms-final-2.onrender.com/api";
+const defaultApiBase = resolveApiBase();
 const shouldRestoreInitialSession = shouldRestoreSessionFromLocation();
 const storedSession = readStorage(STORAGE_KEYS.session, null);
 const initialSession = shouldRestoreInitialSession ? normalizeSession(storedSession) : null;
 
 const state = {
   route: "dashboard",
-  apiBase: localStorage.getItem(STORAGE_KEYS.apiBase) ?? defaultApiBase,
+  apiBase: defaultApiBase,
   session: initialSession,
   loading: false,
   loadingLabel: "Syncing data",
@@ -54,6 +57,16 @@ const state = {
     customerSort: "recent",
     orderSort: "recent",
     theme: localStorage.getItem(STORAGE_KEYS.theme) ?? "light",
+    showLoginPassword: false,
+    showSignupPassword: false,
+    authFields: {
+      loginEmail: "",
+      loginPassword: "",
+      signupFullName: "",
+      signupEmail: "",
+      signupPassword: "",
+      signupRole: "MANAGER"
+    },
     productInsights: {
       recommendations: [],
       dynamicPricing: null
@@ -66,6 +79,25 @@ const state = {
 
 if (shouldRestoreInitialSession && !initialSession && localStorage.getItem(STORAGE_KEYS.session)) {
   localStorage.removeItem(STORAGE_KEYS.session);
+}
+
+try {
+  localStorage.removeItem(LEGACY_STORAGE_KEYS.apiBase);
+} catch (_error) {
+  // Ignore storage failures and keep using the fixed API base.
+}
+
+function isLocalHostname(hostname) {
+  return hostname === "127.0.0.1" || hostname === "localhost";
+}
+
+function resolveApiBase() {
+  const { hostname, port } = window.location;
+  if (isLocalHostname(hostname) && port && port !== "4000") {
+    return "http://127.0.0.1:4000/api";
+  }
+
+  return "/api";
 }
 
 function createEmptyData() {
@@ -246,13 +278,13 @@ function syncLocationWithRoute() {
     return;
   }
 
-  const targetPath = isAuthenticated()
-    ? `${routeBasePath()}/${normalizeRouteId(state.route)}`.replace(/\/{2,}/g, "/")
-    : "/";
-  const targetUrl = `${targetPath}${window.location.search}`;
-  const currentUrl = `${window.location.pathname}${window.location.search}`;
+  const basePath = routeBasePath() || "/";
+  const targetPath = basePath === "/" ? "/" : basePath.replace(/\/+$/, "");
+  const targetHash = isAuthenticated() ? `#/${normalizeRouteId(state.route)}` : "";
+  const targetUrl = `${targetPath}${window.location.search}${targetHash}`;
+  const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
 
-  if (currentUrl === targetUrl && !window.location.hash) {
+  if (currentUrl === targetUrl) {
     return;
   }
 
@@ -358,6 +390,10 @@ function logout(message) {
   state.ui.globalSearch = "";
   state.ui.storeFilter = "all";
   state.ui.productFilter = "all";
+  state.ui.showLoginPassword = false;
+  state.ui.showSignupPassword = false;
+  state.ui.authFields.loginPassword = "";
+  state.ui.authFields.signupPassword = "";
   state.ui.productInsights = { recommendations: [], dynamicPricing: null };
   state.ui.lastBill = null;
   state.ui.billingDraft = createBillingDraft();
@@ -414,12 +450,20 @@ function numberOrDefault(value, fallback = 0) {
 
 function summarizeError(error, fallback) {
   if (error instanceof TypeError && /fetch/i.test(error.message)) {
-    return `Backend is unreachable at ${state.apiBase}. Start the API on http://127.0.0.1:4000 and try again.`;
+    if (state.apiBase.startsWith("http://127.0.0.1") || state.apiBase.startsWith("http://localhost")) {
+      return "Backend is unreachable. Start the API on http://127.0.0.1:4000 and try again.";
+    }
+
+    return "Backend is temporarily unreachable. Please try again in a moment.";
   }
   if (error instanceof Error && error.message) {
     return error.message;
   }
   return fallback;
+}
+
+function normalizeEmail(value) {
+  return String(value ?? "").trim().toLowerCase();
 }
 
 function safeJsonParse(value) {
@@ -563,16 +607,14 @@ async function hydrateAppData(options = {}) {
   stopLoading();
 }
 
-async function login(email, password, apiBase) {
-  state.apiBase = apiBase || state.apiBase;
-  localStorage.setItem(STORAGE_KEYS.apiBase, state.apiBase);
+async function login(email, password) {
   startLoading("Signing in to Retail RMS");
 
   try {
     const data = await api("/auth/login", {
       method: "POST",
       auth: false,
-      body: { email, password }
+      body: { email: normalizeEmail(email), password }
     });
 
     const nextSession = normalizeSession(data);
@@ -585,6 +627,8 @@ async function login(email, password, apiBase) {
     writeStorage(STORAGE_KEYS.session, nextSession);
     state.ui.authMode = "login";
     state.ui.mobileSidebarOpen = false;
+    state.ui.showLoginPassword = false;
+    state.ui.authFields.loginPassword = "";
     clearFeedback();
     ensureDraftDefaults();
     render();
@@ -596,17 +640,17 @@ async function login(email, password, apiBase) {
 }
 
 async function signup(payload) {
-  state.apiBase = payload.apiBase || state.apiBase;
-  localStorage.setItem(STORAGE_KEYS.apiBase, state.apiBase);
   startLoading("Creating user account");
 
   try {
+    const signupEmail = normalizeEmail(payload.email);
+
     await api("/auth/register", {
       method: "POST",
       auth: false,
       body: {
         fullName: payload.fullName,
-        email: payload.email,
+        email: signupEmail,
         password: payload.password,
         role: payload.role,
         storeId: payload.storeId || undefined
@@ -614,6 +658,16 @@ async function signup(payload) {
     });
 
     state.ui.authMode = "login";
+    state.ui.showSignupPassword = false;
+    state.ui.showLoginPassword = false;
+    state.ui.authFields = {
+      loginEmail: signupEmail,
+      loginPassword: payload.password,
+      signupFullName: "",
+      signupEmail: "",
+      signupPassword: "",
+      signupRole: "MANAGER"
+    };
     setFeedback("success", "Account created successfully. Sign in with your new credentials.");
     stopLoading();
   } catch (error) {
@@ -3030,17 +3084,12 @@ function renderSettings() {
       <div class="two-column">
         <article class="panel">
           <div class="section-eyebrow">Connection</div>
-          <h2 class="section-title">API base URL</h2>
-          <form id="settings-form" style="margin-top: 18px;">
-            <div class="field">
-              <label for="apiBase">API Base</label>
-              <input id="apiBase" name="apiBase" value="${escapeHtml(state.apiBase)}" />
-            </div>
-            <div class="button-row" style="margin-top: 18px;">
-              <button class="primary-button" type="submit">Save And Refresh</button>
-            </div>
-          </form>
+          <h2 class="section-title">Backend status</h2>
+          <p class="section-copy" style="margin-top: 18px;">
+            The deployed frontend now uses a fixed internal API path, so the backend URL is no longer editable from the UI.
+          </p>
           <div class="helper-grid" style="margin-top: 18px;">
+            <div class="detail-card"><span class="subdued-label">Connection Mode</span><strong>Managed Proxy</strong></div>
             <div class="detail-card"><span class="subdued-label">Backend Health</span><strong>${escapeHtml(state.data.health?.message ?? "Unavailable")}</strong></div>
             <div class="detail-card"><span class="subdued-label">Swagger Docs</span><strong><a href="${escapeHtml(`${getBackendBase()}/api-docs`)}" target="_blank" rel="noreferrer">Open docs</a></strong></div>
             <div class="detail-card"><span class="subdued-label">Logged In Role</span><strong>${escapeHtml(state.session?.user?.role ?? "Unknown")}</strong></div>
@@ -3168,18 +3217,17 @@ function renderLogin() {
       <section class="auth-panel">
         <div>
           <div class="eyebrow">Retail RMS Frontend</div>
-          <h1 class="auth-title">Operate stores, stock, billing, and AI insight from one console.</h1>
+          <h1 class="auth-title">Sign in to manage stores, stock, billing, and daily retail operations.</h1>
           <p class="auth-copy">
-            This frontend is wired to the existing enterprise backend and seeded demo data. Sign in with one of the seeded users or point the UI to another API base.
+            Your deployed app now uses a fixed backend connection, so login and signup always use the same API without asking for a separate base URL.
           </p>
           <div class="auth-grid">
-            <div class="highlight-card"><span class="subdued-label">Modules</span><strong>9</strong><div class="muted">Dashboard, master data, POS, supply, ops, and AI.</div></div>
-            <div class="highlight-card"><span class="subdued-label">Entities</span><strong>10</strong><div class="muted">Mirrors the tables exposed by the backend schema endpoint.</div></div>
-            <div class="highlight-card"><span class="subdued-label">Seed Store</span><strong>Bangalore Central</strong><div class="muted">Ready with demo users, products, inventory, and a walk-in customer.</div></div>
-            <div class="highlight-card"><span class="subdued-label">Mode</span><strong>Live API</strong><div class="muted">The app reads reports, alerts, orders, and CRUD data from backend routes.</div></div>
+            <div class="highlight-card"><span class="subdued-label">Access</span><strong>Login + Signup</strong><div class="muted">Only account entry is shown before authentication.</div></div>
+            <div class="highlight-card"><span class="subdued-label">Deploy</span><strong>Vercel Ready</strong><div class="muted">Client routes stay stable after refresh and direct links.</div></div>
+            <div class="highlight-card"><span class="subdued-label">Security</span><strong>Password Toggle</strong><div class="muted">You can show or hide the password before submitting.</div></div>
+            <div class="highlight-card"><span class="subdued-label">Connection</span><strong>Managed Proxy</strong><div class="muted">Auth requests use one fixed backend path.</div></div>
           </div>
         </div>
-        <div class="footer-note">Recommended backend default: <code>${escapeHtml(defaultApiBase)}</code></div>
       </section>
 
       <section class="auth-card">
@@ -3189,7 +3237,7 @@ function renderLogin() {
           ${
             isSignup
               ? "Create a new manager or cashier account, then sign in to start using the workspace."
-              : "Use a seeded credential or your own backend user. The token is stored locally for authenticated actions."
+              : "Use your registered account to continue. The token is stored locally for authenticated actions."
           }
         </p>
 
@@ -3215,26 +3263,50 @@ function renderLogin() {
               <form id="signup-form" style="margin-top: 18px;">
                 <div class="input-grid single">
                   <div class="field">
-                    <label for="signupApiBase">API Base URL</label>
-                    <input id="signupApiBase" name="apiBase" value="${escapeHtml(state.apiBase)}" required />
-                  </div>
-                  <div class="field">
                     <label for="signupFullName">Full Name</label>
-                    <input id="signupFullName" name="fullName" required />
+                    <input
+                      id="signupFullName"
+                      name="fullName"
+                      data-auth-field="signupFullName"
+                      value="${escapeHtml(state.ui.authFields.signupFullName)}"
+                      autocomplete="name"
+                      required
+                    />
                   </div>
                   <div class="field">
                     <label for="signupEmail">Email</label>
-                    <input id="signupEmail" name="email" type="email" required />
+                    <input
+                      id="signupEmail"
+                      name="email"
+                      type="email"
+                      data-auth-field="signupEmail"
+                      value="${escapeHtml(state.ui.authFields.signupEmail)}"
+                      autocomplete="email"
+                      required
+                    />
                   </div>
                   <div class="field">
                     <label for="signupPassword">Password</label>
-                    <input id="signupPassword" name="password" type="password" required />
+                    <div class="password-field">
+                      <input
+                        id="signupPassword"
+                        name="password"
+                        type="${state.ui.showSignupPassword ? "text" : "password"}"
+                        data-auth-field="signupPassword"
+                        value="${escapeHtml(state.ui.authFields.signupPassword)}"
+                        autocomplete="new-password"
+                        required
+                      />
+                      <button class="ghost-button password-toggle" type="button" data-action="toggle-password" data-target="signupPassword">
+                        ${state.ui.showSignupPassword ? "Hide" : "Show"}
+                      </button>
+                    </div>
                   </div>
                   <div class="field">
                     <label for="signupRole">Role</label>
-                    <select id="signupRole" name="role">
-                      <option value="MANAGER">Manager</option>
-                      <option value="CASHIER">Cashier</option>
+                    <select id="signupRole" name="role" data-auth-field="signupRole">
+                      <option value="MANAGER" ${state.ui.authFields.signupRole === "MANAGER" ? "selected" : ""}>Manager</option>
+                      <option value="CASHIER" ${state.ui.authFields.signupRole === "CASHIER" ? "selected" : ""}>Cashier</option>
                     </select>
                   </div>
                 </div>
@@ -3248,16 +3320,33 @@ function renderLogin() {
               <form id="login-form" style="margin-top: 18px;">
                 <div class="input-grid single">
                   <div class="field">
-                    <label for="loginApiBase">API Base URL</label>
-                    <input id="loginApiBase" name="apiBase" value="${escapeHtml(state.apiBase)}" required />
-                  </div>
-                  <div class="field">
                     <label for="loginEmail">Email</label>
-                    <input id="loginEmail" name="email" type="email" required />
+                    <input
+                      id="loginEmail"
+                      name="email"
+                      type="email"
+                      data-auth-field="loginEmail"
+                      value="${escapeHtml(state.ui.authFields.loginEmail)}"
+                      autocomplete="email"
+                      required
+                    />
                   </div>
                   <div class="field">
                     <label for="loginPassword">Password</label>
-                    <input id="loginPassword" name="password" type="password" required />
+                    <div class="password-field">
+                      <input
+                        id="loginPassword"
+                        name="password"
+                        type="${state.ui.showLoginPassword ? "text" : "password"}"
+                        data-auth-field="loginPassword"
+                        value="${escapeHtml(state.ui.authFields.loginPassword)}"
+                        autocomplete="current-password"
+                        required
+                      />
+                      <button class="ghost-button password-toggle" type="button" data-action="toggle-password" data-target="loginPassword">
+                        ${state.ui.showLoginPassword ? "Hide" : "Show"}
+                      </button>
+                    </div>
                   </div>
                 </div>
                 <div class="button-row" style="margin-top: 18px;">
@@ -3265,16 +3354,6 @@ function renderLogin() {
                   ${state.loading ? `<div class="loading-pill"><span class="spinner"></span>${escapeHtml(state.loadingLabel)}</div>` : ""}
                 </div>
               </form>
-
-              <div class="quick-credentials">
-                ${DEMO_USERS.map(
-                  (user) => `
-                    <button class="secondary-button" type="button" data-action="demo-login" data-email="${escapeHtml(user.email)}" data-password="${escapeHtml(user.password)}">
-                      ${escapeHtml(user.label)}
-                    </button>
-                  `
-                ).join("")}
-              </div>
             `
         }
       </section>
@@ -3300,6 +3379,11 @@ function render() {
 
 function formValue(formData, key) {
   return String(formData.get(key) ?? "").trim();
+}
+
+function rawFormValue(formData, key) {
+  const value = formData.get(key);
+  return typeof value === "string" ? value : String(value ?? "");
 }
 
 function handleDraftChange(target) {
@@ -3350,27 +3434,18 @@ async function handleSubmit(event) {
 
   if (form.id === "login-form") {
     const data = new FormData(form);
-    await login(formValue(data, "email"), formValue(data, "password"), formValue(data, "apiBase"));
+    await login(formValue(data, "email"), rawFormValue(data, "password"));
     return;
   }
 
   if (form.id === "signup-form") {
     const data = new FormData(form);
     await signup({
-      apiBase: formValue(data, "apiBase"),
       fullName: formValue(data, "fullName"),
       email: formValue(data, "email"),
-      password: formValue(data, "password"),
+      password: rawFormValue(data, "password"),
       role: formValue(data, "role") || "CASHIER"
     });
-    return;
-  }
-
-  if (form.id === "settings-form") {
-    const data = new FormData(form);
-    state.apiBase = formValue(data, "apiBase");
-    localStorage.setItem(STORAGE_KEYS.apiBase, state.apiBase);
-    await hydrateAppData({ showSuccess: true });
     return;
   }
 
@@ -3465,7 +3540,7 @@ async function handleSubmit(event) {
         body: {
           fullName: formValue(data, "fullName"),
           email: formValue(data, "email"),
-          password: formValue(data, "password"),
+          password: rawFormValue(data, "password"),
           role: formValue(data, "role"),
           storeId: formValue(data, "storeId") || undefined
         }
@@ -3563,23 +3638,26 @@ async function handleClick(event) {
     render();
     return;
   }
-  if (action === "demo-login") {
-    const emailInput = document.querySelector("#loginEmail");
-    const passwordInput = document.querySelector("#loginPassword");
-    if (emailInput && passwordInput) {
-      emailInput.value = button.dataset.email ?? "";
-      passwordInput.value = button.dataset.password ?? "";
+  if (action === "toggle-password") {
+    if (button.dataset.target === "loginPassword") {
+      state.ui.showLoginPassword = !state.ui.showLoginPassword;
     }
+    if (button.dataset.target === "signupPassword") {
+      state.ui.showSignupPassword = !state.ui.showSignupPassword;
+    }
+    render();
     return;
   }
   if (action === "auth-mode-login") {
     state.ui.authMode = "login";
+    state.ui.showSignupPassword = false;
     clearFeedback();
     render();
     return;
   }
   if (action === "auth-mode-signup") {
     state.ui.authMode = "signup";
+    state.ui.showLoginPassword = false;
     clearFeedback();
     render();
     return;
@@ -3690,11 +3768,29 @@ async function handleClick(event) {
   }
 }
 
+function handleInput(event) {
+  const target = event.target;
+  if (
+    !(target instanceof HTMLInputElement || target instanceof HTMLSelectElement || target instanceof HTMLTextAreaElement)
+  ) {
+    return;
+  }
+
+  if (target.dataset.authField) {
+    state.ui.authFields[target.dataset.authField] = target.value;
+  }
+}
+
 function handleChange(event) {
   const target = event.target;
   if (
     !(target instanceof HTMLInputElement || target instanceof HTMLSelectElement || target instanceof HTMLTextAreaElement)
   ) {
+    return;
+  }
+
+  if (target.dataset.authField) {
+    state.ui.authFields[target.dataset.authField] = target.value;
     return;
   }
 
@@ -3730,6 +3826,7 @@ function bindRootEvents(root) {
     void handleClick(event);
   });
 
+  root.addEventListener("input", handleInput);
   root.addEventListener("change", handleChange);
 }
 

@@ -53,8 +53,9 @@ router.post(
     try {
       const userRepository = AppDataSource.getRepository(User);
       const storeRepository = AppDataSource.getRepository(Store);
+      const email = req.body.email.trim().toLowerCase();
 
-      const existing = await userRepository.findOne({ where: { email: req.body.email } });
+      const existing = await userRepository.findOne({ where: { email } });
       if (existing) {
         throw new AppError(409, "User already exists");
       }
@@ -69,7 +70,7 @@ router.post(
 
       const user = userRepository.create({
         fullName: req.body.fullName,
-        email: req.body.email,
+        email,
         passwordHash: await hashPassword(req.body.password),
         role: req.body.role,
         store
