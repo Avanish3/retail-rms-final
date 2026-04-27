@@ -28,6 +28,7 @@ const DEMO_USERS = [
   { label: "Cashier", email: "cashier@retailrms.com", password: "Password@123" }
 ];
 
+const API_BASE_URL = "https://retail-rms-final-4.onrender.com/api";
 const defaultApiBase = resolveApiBase();
 const shouldRestoreInitialSession = shouldRestoreSessionFromLocation();
 const storedSession = readStorage(STORAGE_KEYS.session, null);
@@ -97,7 +98,7 @@ function resolveApiBase() {
     return "http://127.0.0.1:4000/api";
   }
 
-  return "/api";
+  return API_BASE_URL;
 }
 
 function createEmptyData() {
@@ -3086,10 +3087,10 @@ function renderSettings() {
           <div class="section-eyebrow">Connection</div>
           <h2 class="section-title">Backend status</h2>
           <p class="section-copy" style="margin-top: 18px;">
-            The deployed frontend now uses a fixed internal API path, so the backend URL is no longer editable from the UI.
+            The deployed frontend now uses your hosted backend URL directly, so the backend URL is no longer editable from the UI.
           </p>
           <div class="helper-grid" style="margin-top: 18px;">
-            <div class="detail-card"><span class="subdued-label">Connection Mode</span><strong>Managed Proxy</strong></div>
+            <div class="detail-card"><span class="subdued-label">Connection Mode</span><strong>Hosted API</strong></div>
             <div class="detail-card"><span class="subdued-label">Backend Health</span><strong>${escapeHtml(state.data.health?.message ?? "Unavailable")}</strong></div>
             <div class="detail-card"><span class="subdued-label">Swagger Docs</span><strong><a href="${escapeHtml(`${getBackendBase()}/api-docs`)}" target="_blank" rel="noreferrer">Open docs</a></strong></div>
             <div class="detail-card"><span class="subdued-label">Logged In Role</span><strong>${escapeHtml(state.session?.user?.role ?? "Unknown")}</strong></div>
@@ -3219,13 +3220,13 @@ function renderLogin() {
           <div class="eyebrow">Retail RMS Frontend</div>
           <h1 class="auth-title">Sign in to manage stores, stock, billing, and daily retail operations.</h1>
           <p class="auth-copy">
-            Your deployed app now uses a fixed backend connection, so login and signup always use the same API without asking for a separate base URL.
+            Your deployed app now uses your hosted backend connection directly, so login and signup always use the same API without asking for a separate base URL.
           </p>
           <div class="auth-grid">
             <div class="highlight-card"><span class="subdued-label">Access</span><strong>Login + Signup</strong><div class="muted">Only account entry is shown before authentication.</div></div>
             <div class="highlight-card"><span class="subdued-label">Deploy</span><strong>Vercel Ready</strong><div class="muted">Client routes stay stable after refresh and direct links.</div></div>
             <div class="highlight-card"><span class="subdued-label">Security</span><strong>Password Toggle</strong><div class="muted">You can show or hide the password before submitting.</div></div>
-            <div class="highlight-card"><span class="subdued-label">Connection</span><strong>Managed Proxy</strong><div class="muted">Auth requests use one fixed backend path.</div></div>
+            <div class="highlight-card"><span class="subdued-label">Connection</span><strong>Hosted API</strong><div class="muted">Auth requests use your fixed Render backend URL.</div></div>
           </div>
         </div>
       </section>
